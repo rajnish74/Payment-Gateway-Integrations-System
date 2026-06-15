@@ -32,6 +32,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 * Merchant Registration API Structure
 * API Key Management Module Structure
 * Global Exception Handling
+* API Key CRUD Operations
 
 ### 🔄 In Progress
 
