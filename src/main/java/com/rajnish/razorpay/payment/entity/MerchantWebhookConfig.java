@@ -3,11 +3,17 @@ package com.rajnish.razorpay.payment.entity;
 import com.rajnish.razorpay.common.enums.PaymentStatus;
 import com.rajnish.razorpay.merchant.entity.Merchant;
 import jakarta.persistence.*;
+import lombok.*;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "merchant_webhook_config")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class MerchantWebhookConfig {
 
     @Id

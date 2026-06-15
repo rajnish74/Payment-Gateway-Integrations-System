@@ -1,0 +1,18 @@
+package com.rajnish.razorpay.common.utils;
+
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.Random;
+
+public class RandomizerUtil {
+
+    private static final SecureRandom SECURE_RANDOM=new SecureRandom();
+
+    public static String randomBase64(int length){
+        byte[] buff=new byte[length];
+        SECURE_RANDOM.nextBytes(buff);
+//    [4,12,-1,45,56]  {-128 to 127}
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(buff);
+
+    }
+}

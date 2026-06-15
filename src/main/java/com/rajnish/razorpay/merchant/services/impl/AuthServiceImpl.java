@@ -10,10 +10,11 @@ import com.rajnish.razorpay.merchant.entity.Merchant;
 import com.rajnish.razorpay.merchant.repository.AppUserRepository;
 import com.rajnish.razorpay.merchant.repository.MerchantRepository;
 import com.rajnish.razorpay.merchant.services.AuthService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
