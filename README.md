@@ -1,18 +1,18 @@
 # Payment Gateway Integration System
 
-A Spring Boot-based Payment Gateway Integration System inspired by Razorpay architecture. This project is being developed to understand how large-scale payment systems work, including merchant onboarding, API key management, payment processing, settlements, refunds, webhooks, and card tokenization.
+A Spring Boot-based Payment Gateway Integration System inspired by Razorpay architecture. This project is being built to understand how large-scale payment systems work — including merchant onboarding, API key management, payment processing, settlements, refunds, webhooks, and card tokenization.
 
 ---
 
 ## 🚀 Tech Stack
 
-* Java 21
-* Spring Boot 3
-* Spring Data JPA
-* PostgreSQL
-* Maven
-* Lombok
-* Git & GitHub
+- Java 21
+- Spring Boot 3
+- Spring Data JPA
+- PostgreSQL
+- Maven
+- Lombok
+- Git & GitHub
 
 ---
 
@@ -20,112 +20,122 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 
 🚧 **Currently Under Development**
 
-### ✅ Completed
+---
 
-* Project Setup
-* Package Structure Design
-* Database Entity Design
-* DTO Layer
-* Repository Layer
-* Controller Layer
-* Service Layer Structure
-* Merchant Registration API Structure
-* API Key Management Module Structure
-* Global Exception Handling
-* API Key CRUD Operations
+## ✅ Completed
 
-### 🔄 In Progress
-
-* Authentication Module
-* Payment Module
-* Business Logic Implementation
-* Database Relationships & Validations
-
-### 🎯 Planned Features
-
-* JWT Authentication
-* Customer Management
-* Order Management
-* Payment Processing
-* Refund Processing
-* Settlement Engine
-* Webhook Event Handling
-* Dead Letter Queue (DLQ)
-* Merchant Dashboard APIs
-* Payment Analytics
+- Project Setup & Configuration
+- Package Structure Design (Domain-Driven)
+- Database Entity Design (All Domains)
+- DTO Layer (Request & Response)
+- Repository Layer
+- Controller Layer
+- Service Layer Structure
+- Global Exception Handling
+- Merchant Registration API Structure
+- API Key Management Module (Full CRUD)
+- Auth Controller & Service Structure
+- Order Controller Structure
 
 ---
 
-## 📂 Current Module Structure
+## 🔄 In Progress
+
+- Authentication Module (JWT — Service wired, filter pending)
+- Order Creation Business Logic
+- Payment Module Business Logic
+
+---
+
+## 🎯 Planned Features
+
+- JWT Authentication (filter & token validation)
+- Customer Management
+- Payment Processing (state machine)
+- Refund API
+- Settlement Engine
+- Webhook Event Handling
+- Dead Letter Queue (DLQ)
+- Merchant Dashboard APIs
+- Payment Analytics
+
+---
+
+## 🌐 API Endpoints (Working)
+
+### API Key Management — `/api/keys`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/merchants/{merchantId}/api-keys` | Create a new API key for a merchant |
+| GET | `/v1/merchants/{merchantId}/api-keys` | Get API key details |
+| PUT | `/api/keys/{id}` | Update API key |  //pending final endpoint design
+| DELETE | /v1/merchants/{merchantId}/api-keys/{keyId}` | Delete API key |
+| POST | `/v1/merchants/{merchantId}/api-keys/{keyId}/rotate` | Rotate API key |
+
+### Auth — `/api/auth`
+
+| Method | Endpoint          | Description |
+|--------|-------------------|-------------|
+| POST | `/v1/auth/signup` | Merchant registration (structure ready) |
+
+### Orders — `/api/orders`
+
+| Method | Endpoint     | Description |
+|--------|--------------|-------------|
+| POST | `/v1/orders` | Create order (in progress) |
+
+---
+
+## 📂 Module Structure
 
 ### Merchant Module
-
-* Merchant Registration
-* API Key Management
-* User Management
+- Merchant Registration
+- API Key Management (CRUD complete)
+- User Management
+- Customer Management
 
 ### Payment Module
-
-* Orders
-* Payments
-* Refunds
-* Webhook Configuration
+- Orders
+- Payments
+- Refunds
+- Webhook Configuration
 
 ### Operations Module
-
-* Settlements
-* Settlement Payments
-* Webhook Events
-* DLQ Events
+- Settlements
+- Settlement Payments
+- Webhook Events
+- DLQ Events
 
 ### Vault Module
-
-* Card Vault
-* Card Token Management
+- Card Vault
+- Card Token Management (Entity only, no API layer yet)
 
 ---
 
 ## 🗄️ Database Entities
 
-### Merchant Domain
+**Merchant Domain** — Merchant, AppUser, ApiKey, Customer
 
-* Merchant
-* AppUser
-* ApiKey
-* Customer
+**Payment Domain** — OrderRecord, Payments, Refund, MerchantWebhookConfig, PaymentTransitionLog
 
-### Payment Domain
+**Operations Domain** — Settlement, SettlementPayment, SettlementPaymentId, WebhookEvent, DLQEvent
 
-* OrderRecord
-* Payments
-* Refund
-* MerchantWebhookConfig
-* PaymentTransitionLog
-
-### Operations Domain
-
-* Settlement
-* SettlementPayment
-* SettlementPaymentId
-* WebhookEvent
-* DLQEvent
-
-### Vault Domain
-
-* VaultCard
-* CardToken
+**Vault Domain** — VaultCard, CardToken
 
 ---
 
-## 🏗️ Project Architecture
+## 🏗️ Architecture
 
-```text
-Controller Layer
-        ↓
-Service Layer
-        ↓
-Repository Layer
-        ↓
+```
+Client Request
+      ↓
+Controller Layer  (REST endpoints, input validation)
+      ↓
+Service Layer     (Business logic, transaction management)
+      ↓
+Repository Layer  (Spring Data JPA)
+      ↓
 PostgreSQL Database
 ```
 
@@ -133,16 +143,15 @@ PostgreSQL Database
 
 ## 🔮 Future Enhancements
 
-* Razorpay-style Checkout Flow
-* API Key Rotation
-* Rate Limiting
-* Event-Driven Processing
-* Kafka Integration
-* Redis Caching
-* Monitoring & Logging
-* Docker Deployment
-* CI/CD Pipeline
-* Unit & Integration Testing
+- Razorpay-style Checkout Flow
+- API Key Rotation
+- Rate Limiting
+- Kafka Integration (Event-Driven Processing)
+- Redis Caching
+- Docker Deployment
+- CI/CD Pipeline
+- Unit & Integration Testing
+- Monitoring & Logging
 
 ---
 
@@ -150,13 +159,13 @@ PostgreSQL Database
 
 This project is being built to gain hands-on experience with:
 
-* Payment Gateway Architecture
-* Spring Boot Backend Development
-* Database Design & Relationships
-* Secure API Development
-* Transaction Processing
-* Event-Driven Systems
-* Scalable Software Architecture
+- Payment Gateway Architecture
+- Spring Boot Backend Development
+- Database Design & Relationships
+- Secure API Development
+- Transaction Processing
+- Event-Driven Systems
+- Scalable Software Architecture
 
 ---
 
@@ -164,5 +173,5 @@ This project is being built to gain hands-on experience with:
 
 **Rajnish Kumar**
 
-GitHub: https://github.com/rajnish74
-LinkedIn: https://www.linkedin.com/in/rajnish-kumar-74/
+- GitHub: [github.com/rajnish74](https://github.com/rajnish74)
+- LinkedIn: [linkedin.com/in/rajnish-kumar-74](https://www.linkedin.com/in/rajnish-kumar-74/)
