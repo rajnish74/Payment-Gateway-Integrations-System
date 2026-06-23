@@ -14,16 +14,19 @@
 - Common Entity (Money)
 - Global Exception Handling (DuplicateResourceException, ResourceNotFoundException, GlobalExceptionHandler, ErrorResponse)
 - DTO Layer Setup
+- Database Indexes added on all entity tables
+- JPA Auditing enabled (`@EnableJpaAuditing`) — createdAt & updatedAt auto-managed
+- MapStruct integrated — Merchant & Payment domain mappers created
 
 ---
 
 ## Phase 2: Merchant Module ✅ Complete
 
 ### Entities
-- Merchant
-- AppUser
-- ApiKey
-- Customer
+- Merchant (with indexes + JPA auditing)
+- AppUser (with indexes + JPA auditing)
+- ApiKey (with indexes + JPA auditing)
+- Customer (with indexes + JPA auditing)
 
 ### Repositories
 - MerchantRepository
@@ -34,20 +37,23 @@
 - Request: MerchantSignupRequest, CreateApiKeyRequest
 - Response: MerchantResponse, ApiKeyResponse, ApiKeyCreateResponse
 
+### MapStruct Mappers
+- MerchantMapper (Merchant ↔ MerchantResponse)
+- ApiKeyMapper (ApiKey ↔ ApiKeyResponse, ApiKeyCreateResponse)
+
 ### Controllers
 - AuthController (signup endpoint — structure ready)
 - ApiKeyController (full CRUD)
 
 ### Services
 - AuthService / AuthServiceImpl (structure ready)
-- ApiKeyService / ApiKeyServiceImpl (full CRUD logic complete)
+- ApiKeyService / ApiKeyServiceImpl ✅ fully implemented
 
 ### What's working
-- Create API Key → `POST /v1/merchants/{merchantId}/api-keys`
-- Get API Key → `GET /v1/merchants/{merchantId}/api-keys`
-- Update API Key → `PUT /api/keys/{id}` //pending final endpoint design
-- Delete API Key → `DELETE /v1/merchants/{merchantId}/api-keys/{keyId}`
-- Create API Key → `POST /v1/merchants/{merchantId}/api-keys/{keyId}/rotate`
+- Create API Key → `POST /api/keys`
+- Get API Key → `GET /api/keys/{id}`
+- Update API Key → `PUT /api/keys/{id}`
+- Delete API Key → `DELETE /api/keys/{id}`
 
 ---
 
@@ -70,6 +76,9 @@
 ### DTOs
 - Request: CreateOrderRequest
 - Response: OrderResponse
+
+### MapStruct Mappers
+- OrderMapper (OrderRecord ↔ OrderResponse)
 
 ### Service
 - OrderService / OrderServiceImpl (structure ready)
@@ -150,3 +159,10 @@
 - OrderController structure created
 - Order DTOs (CreateOrderRequest, OrderResponse)
 - OrderService and OrderServiceImpl skeleton
+
+### 23 June 2026
+- ApiKeyServiceImpl fully implemented (all CRUD business logic complete)
+- Database indexes added on entity tables (Merchant, AppUser, ApiKey, Customer, OrderRecord)
+- JPA Auditing enabled via `@EnableJpaAuditing` — createdAt & updatedAt auto-populated
+- MapStruct integrated — mapper interfaces created for Merchant domain and Payment domain
+- Security not added yet — will be implemented with JWT in upcoming phase

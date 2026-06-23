@@ -12,6 +12,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - PostgreSQL
 - Maven
 - Lombok
+- MapStruct (DTO Mapping)
 - Git & GitHub
 
 ---
@@ -27,13 +28,16 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - Project Setup & Configuration
 - Package Structure Design (Domain-Driven)
 - Database Entity Design (All Domains)
+- Database Indexes on Entity Tables
+- JPA Auditing (`@EnableJpaAuditing` — createdAt, updatedAt auto-managed)
 - DTO Layer (Request & Response)
+- MapStruct Integration (Merchant & Payment domain mappers)
 - Repository Layer
 - Controller Layer
 - Service Layer Structure
 - Global Exception Handling
 - Merchant Registration API Structure
-- API Key Management Module (Full CRUD)
+- API Key Management Module (Full CRUD — Service complete)
 - Auth Controller & Service Structure
 - Order Controller Structure
 
@@ -67,23 +71,22 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/v1/merchants/{merchantId}/api-keys` | Create a new API key for a merchant |
-| GET | `/v1/merchants/{merchantId}/api-keys` | Get API key details |
-| PUT | `/api/keys/{id}` | Update API key |  //pending final endpoint design
-| DELETE | /v1/merchants/{merchantId}/api-keys/{keyId}` | Delete API key |
-| POST | `/v1/merchants/{merchantId}/api-keys/{keyId}/rotate` | Rotate API key |
+| POST | `/api/keys` | Create a new API key for a merchant |
+| GET | `/api/keys/{id}` | Get API key details |
+| PUT | `/api/keys/{id}` | Update API key |
+| DELETE | `/api/keys/{id}` | Delete API key |
 
 ### Auth — `/api/auth`
 
-| Method | Endpoint          | Description |
-|--------|-------------------|-------------|
-| POST | `/v1/auth/signup` | Merchant registration (structure ready) |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/signup` | Merchant registration (structure ready) |
 
 ### Orders — `/api/orders`
 
-| Method | Endpoint     | Description |
-|--------|--------------|-------------|
-| POST | `/v1/orders` | Create order (in progress) |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/orders` | Create order (in progress) |
 
 ---
 

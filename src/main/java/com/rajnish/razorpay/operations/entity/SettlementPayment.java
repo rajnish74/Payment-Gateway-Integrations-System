@@ -1,5 +1,6 @@
 package com.rajnish.razorpay.operations.entity;
 
+import com.rajnish.razorpay.common.entity.BaseEntity;
 import jakarta.persistence.*;
 
 @Entity
