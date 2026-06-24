@@ -40,6 +40,12 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - API Key Management Module (Full CRUD — Service complete)
 - Auth Controller & Service Structure
 - Order Controller Structure
+- Payment Controller — Initiate Payment API
+- PaymentServiceImpl — Full payment initiation flow with order validation
+- Gateway Layer — Adapter Pattern (Card, UPI, NetBanking adapters)
+- Processor Layer — Strategy Pattern (Card, UPI, NetBanking processors)
+- PaymentGatewayRouter & PaymentProcessorRouter
+- Sealed Interface usage — PaymentResult & PaymentProcessorResponse
 
 ---
 
@@ -47,7 +53,8 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 
 - Authentication Module (JWT — Service wired, filter pending)
 - Order Creation Business Logic
-- Payment Module Business Logic
+- Payment Processor actual implementation (Card/UPI/NetBanking charge logic)
+- Payment Adapter actual implementation (external gateway calls)
 
 ---
 
@@ -67,26 +74,32 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 
 ## 🌐 API Endpoints (Working)
 
-### API Key Management — `/api/keys`
+### Auth — `/v1/auth`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/keys` | Create a new API key for a merchant |
-| GET | `/api/keys/{id}` | Get API key details |
-| PUT | `/api/keys/{id}` | Update API key |
-| DELETE | `/api/keys/{id}` | Delete API key |
+| POST | `/v1/auth/signup` | Merchant registration |
 
-### Auth — `/api/auth`
+### API Key Management — `/v1/merchants/{merchantId}/api-keys`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/signup` | Merchant registration (structure ready) |
+| POST | `/v1/merchants/{merchantId}/api-keys` | Create a new API key |
+| GET | `/v1/merchants/{merchantId}/api-keys` | List all API keys for merchant |
+| DELETE | `/v1/merchants/{merchantId}/api-keys/{keyId}` | Delete an API key |
+| POST | `/v1/merchants/{merchantId}/api-keys/{keyId}/rotate` | Rotate an API key |
 
-### Orders — `/api/orders`
+### Orders — `/v1/orders`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/orders` | Create order (in progress) |
+| POST | `/v1/orders` | Create a new order |
+
+### Payments — `/v1/payments`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/payments` | Initiate a payment for an order |
 
 ---
 
