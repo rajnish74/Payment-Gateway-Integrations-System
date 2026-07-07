@@ -40,21 +40,24 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - API Key Management Module (Full CRUD — Service complete)
 - Auth Controller & Service Structure
 - Order Controller Structure
-- Payment Controller — Initiate Payment API
-- PaymentServiceImpl — Full payment initiation flow with order validation
-- Gateway Layer — Adapter Pattern (Card, UPI, NetBanking adapters)
-- Processor Layer — Strategy Pattern (Card, UPI, NetBanking processors)
+- Payment Controller — Initiate & Capture Payment APIs
+- PaymentServiceImpl — Full payment initiation + capture flow
+- Payment State Machine — 14 transitions covering full payment lifecycle
+- Payment Transition Log — Full audit trail of every state change
+- Gateway Layer — Adapter Pattern (NetBanking & UPI fully wired, Card stub)
+- Processor Layer — Strategy Pattern (NetBanking & UPI simulated, Card stub)
 - PaymentGatewayRouter & PaymentProcessorRouter
-- Sealed Interface usage — PaymentResult & PaymentProcessorResponse
+- Sealed Interface — PaymentResult & PaymentProcessorResponse (exhaustive switch)
+- InvalidStateTransitionException — illegal state+event guard
 
 ---
 
 ## 🔄 In Progress
 
 - Authentication Module (JWT — Service wired, filter pending)
-- Order Creation Business Logic
-- Payment Processor actual implementation (Card/UPI/NetBanking charge logic)
-- Payment Adapter actual implementation (external gateway calls)
+- Order Creation Business Logic (OrderServiceImpl)
+- Card Payment Processor & Adapter (logic pending)
+- Refund API
 
 ---
 
@@ -100,6 +103,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/v1/payments` | Initiate a payment for an order |
+| POST | `/v1/payments/{paymentId}/capture` | Capture an authorized payment |
 
 ---
 

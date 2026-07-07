@@ -85,12 +85,12 @@
 ### Services
 - OrderService / OrderServiceImpl (structure ready)
 - PaymentService / PaymentServiceImpl ✅ fully implemented
-    - Order status validation (CREATED / ATTEMPTED only)
-    - Order attempt counter increment
-    - Payment entity creation & persistence
-    - Routes to PaymentGatewayRouter
-    - Handles PaymentResult (Pending / Failure) via sealed interface pattern
-    - BusinessRuleViolationException for invalid order state
+  - Order status validation (CREATED / ATTEMPTED only)
+  - Order attempt counter increment
+  - Payment entity creation & persistence
+  - Routes to PaymentGatewayRouter
+  - Handles PaymentResult (Pending / Failure) via sealed interface pattern
+  - BusinessRuleViolationException for invalid order state
 
 ### Gateway Layer (Adapter Pattern) ✅
 - `PaymentAdapter` interface — `initiate(PaymentRequest)`
@@ -112,16 +112,42 @@
 - `PaymentProcessorRequest` record — method, amount, methodDetails
 - `PaymentProcessorResponse` sealed interface — Pending | Success(processorRef, bankRef) | Failure
 
+### State Machine ✅
+- `PaymentStateMachine` — pure transition table (Map<Transition, PaymentStatus>)
+  - CREATED → AUTHORIZING → AUTHORIZED → CAPTURING → CAPTURED → SETTLED
+  - CAPTURED/SETTLED → PARTIALLY_REFUNDED → REFUNDED
+  - AUTHORIZED → AUTH_EXPIRED (capture timeout)
+  - CREATED/AUTHORIZING → CANCELLED
+- `PaymentTransitionLogService` — applies transition, persists log entry with actor & timestamp
+- `PaymentTransitionLogRepository` — JPA repository for audit log
+- `InvalidStateTransitionException` — thrown on illegal state+event combo
+
 ### Design Patterns Used
 - **Strategy Pattern** — PaymentProcessor per method (Card/UPI/NetBanking)
 - **Adapter Pattern** — PaymentAdapter per gateway
 - **Router Pattern** — PaymentGatewayRouter & PaymentProcessorRouter dispatch by PaymentMethod
 - **Sealed Interface** — PaymentResult & PaymentProcessorResponse (exhaustive switch)
+- **State Machine Pattern** — PaymentStateMachine with immutable transition table
+
+### Processor Implementations ✅
+- `NetBankingPaymentProcessor` — simulation with BANK_CODE_FAIL trigger, returns Success/Failure
+- `UPIPaymentProcessor` — simulation with `fail@axis` VPA trigger, returns Success/Failure
+- `PaymentProcessorRequest` — factory methods `card()` and `nonCard()` for clean construction
+
+### Adapter Implementations ✅
+- `NetBankingAdapter` — full initiate() with processor routing + capture() stub
+- `UPIPaymentAdapter` — full initiate() with processor routing + capture() stub
+- `CardPaymentAdapter` — initiate() + capture() stubs (implementation pending)
+- All adapters handle exceptions and return `PaymentResult.Failure` on error
+
+### Capture Flow ✅
+- `PaymentController` — `POST /v1/payments/{paymentId}/capture`
+- `PaymentServiceImpl.capture()` — fetches payment, applies CAPTURE_REQUEST transition, calls gateway, applies CAPTURE_SUCCESS/CAPTURE_FAILURE transition, persists
 
 ### Pending
 - Order creation business logic (amount validation, merchant lookup)
-- Actual processor logic implementation (Card/UPI/NetBanking charge logic)
-- Actual adapter logic (external gateway calls)
+- CardPaymentProcessor actual logic
+- CardPaymentAdapter actual logic
 - Refund API
 - Webhook config endpoints
 
@@ -206,21 +232,39 @@
 ### 24 June 2026
 - PaymentController implemented — `POST /v1/payments` (initiate payment endpoint)
 - PaymentServiceImpl fully implemented
-    - Order status validation before payment (only CREATED/ATTEMPTED allowed)
-    - Order attempt counter auto-increment
-    - Payment entity creation and DB persistence
-    - Integrated with PaymentGatewayRouter
-    - Result handling via sealed interface switch (Pending → store ref, Failure → store error)
-    - Added BusinessRuleViolationException for invalid order state
+  - Order status validation before payment (only CREATED/ATTEMPTED allowed)
+  - Order attempt counter auto-increment
+  - Payment entity creation and DB persistence
+  - Integrated with PaymentGatewayRouter
+  - Result handling via sealed interface switch (Pending → store ref, Failure → store error)
+  - Added BusinessRuleViolationException for invalid order state
 - Gateway Layer implemented (Adapter Pattern)
-    - PaymentAdapter interface
-    - CardPaymentAdapter, NetBankingAdapter, UPIPaymentAdapter (structure ready)
-    - PaymentGatewayRouter — dispatches by PaymentMethod
-    - PaymentAdapterConfig — registers adapters as Spring beans
-    - PaymentRequest & PaymentResult (sealed) records
+  - PaymentAdapter interface
+  - CardPaymentAdapter, NetBankingAdapter, UPIPaymentAdapter (structure ready)
+  - PaymentGatewayRouter — dispatches by PaymentMethod
+  - PaymentAdapterConfig — registers adapters as Spring beans
+  - PaymentRequest & PaymentResult (sealed) records
 - Processor Layer implemented (Strategy Pattern)
-    - PaymentProcessor interface
-    - CardPaymentProcessor, NetBankingPaymentProcessor, UPIPaymentProcessor (structure ready)
-    - PaymentProcessorRouter — dispatches by PaymentMethod
-    - PaymentProcessorConfig — registers processors as Spring beans
-    - PaymentProcessorRequest & PaymentProcessorResponse (sealed) records
+  - PaymentProcessor interface
+  - CardPaymentProcessor, NetBankingPaymentProcessor, UPIPaymentProcessor (structure ready)
+  - PaymentProcessorRouter — dispatches by PaymentMethod
+  - PaymentProcessorConfig — registers processors as Spring beans
+  - PaymentProcessorRequest & PaymentProcessorResponse (sealed) records
+
+### 25 June 2026
+- Payment State Machine implemented
+  - PaymentStateMachine — full transition table (14 transitions covering complete payment lifecycle)
+  - PaymentTransitionLogService — applies transition + persists audit log with actor & timestamp
+  - PaymentTransitionLogRepository added
+  - InvalidStateTransitionException added to common exceptions
+- Capture flow implemented
+  - `POST /v1/payments/{paymentId}/capture` endpoint added to PaymentController
+  - PaymentServiceImpl.capture() — state transition (CAPTURE_REQUEST → SUCCESS/FAILURE), gateway call, DB persist
+- Processor implementations added
+  - NetBankingPaymentProcessor — simulation logic (BANK_CODE_FAIL trigger)
+  - UPIPaymentProcessor — simulation logic (fail@axis VPA trigger)
+  - PaymentProcessorRequest — factory methods card() and nonCard() added
+- Adapter implementations added
+  - NetBankingAdapter — full initiate() with processor routing, capture() stub
+  - UPIPaymentAdapter — full initiate() with processor routing, capture() stub
+  - All adapters have try-catch with PaymentResult.Failure fallback
