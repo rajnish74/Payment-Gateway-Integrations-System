@@ -1,9 +1,11 @@
 package com.rajnish.razorpay.payment.repositories;
 
+import com.rajnish.razorpay.common.enums.PaymentStatus;
 import com.rajnish.razorpay.payment.entity.OrderRecord;
 import com.rajnish.razorpay.payment.entity.Payments;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,4 +14,6 @@ public interface PaymentRepository extends JpaRepository<Payments, UUID> {
     List<Payments> findByOrder_Id(OrderRecord order);
 
     Optional<Payments> findByIdAndMerchantId(UUID paymentId, UUID merchantId);
+
+    List<Payments> findByStatusAndCreatedAtBefore(PaymentStatus paymentStatus, LocalDateTime globalWindow);
 }

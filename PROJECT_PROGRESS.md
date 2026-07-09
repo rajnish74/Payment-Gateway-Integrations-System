@@ -137,7 +137,16 @@
 ### Adapter Implementations ✅
 - `NetBankingAdapter` — full initiate() with processor routing + capture() stub
 - `UPIPaymentAdapter` — full initiate() with processor routing + capture() stub
-- `CardPaymentAdapter` — initiate() + capture() stubs (implementation pending)
+- `CardPaymentAdapter` ✅ fully wired — extracts token from methodDetails → calls VaultService.charge() → maps ProcessorResponse to PaymentResult
+
+### Bank Callback Simulator (structure ready)
+- `BankCallbackSimulator` — `@Scheduled` job, polls AUTHORIZING payments older than 1s
+- `SimulatorConfig` — `@ConfigurationProperties(prefix="payment.simulator")`
+  - pollIntervalMs, chaosMode (ChaosMode enum)
+  - Per-method config: minDelaySeconds, maxDelaySeconds, successRate
+- `ChaosMode` enum added to common
+- Configured via `application.yaml` (card: 90% success, UPI: 95%, NetBanking: 80%)
+- `simulateCallback()` logic pending
 - All adapters handle exceptions and return `PaymentResult.Failure` on error
 
 ### Capture Flow ✅
@@ -170,16 +179,49 @@
 
 ---
 
-## Phase 5: Vault Module ⏳ Pending
+## Phase 5: Vault Module ✅ Mostly Complete
 
-### Entities Created
-- VaultCard
-- CardToken
+### Entities
+- VaultCard (brand, lastFourDigits, bin, encryptedPan, encryptedDek, expiryMonth, expiryYear, cardholderName)
+- CardToken (token, vaultCard, customer, merchant, revokedAt)
+
+### Repositories
+- VaultCardRepository
+- CardTokenRepository — `findByTokenAndRevokedAtIsNull(token)`
+
+### DTOs
+- Request: TokenizeRequest (pan, cvv, expiryMonth, expiryYear, customerId, cardholderName)
+- Response: TokenizeResponse (token, lastFour, brand, expiryMonth, expiryYear)
+
+### Controller
+- VaultController — `POST /tokenize`
+
+### Service
+- VaultService interface — `tokenize()`, `charge()`
+- VaultServiceImpl ✅ fully implemented
+  - PAN last-4 & BIN extraction
+  - Card brand detection (VISA/MASTERCARD/AMEX/RUPAY)
+  - Per-card DEK (Data Encryption Key) generation (AES-256)
+  - PAN encrypted with DEK (AES-GCM)
+  - DEK encrypted with master key (AES-GCM)
+  - Token generated with `tok_` prefix + random Base64
+  - charge() — decrypts DEK → decrypts PAN → routes to PaymentProcessorRouter → zeroes PAN bytes in finally block
+
+### Encryption (VaultEncryption config)
+- Master key loaded from `vault.master-key` (application.yaml)
+- `panEncrypt(dek)` — static helper, AES-GCM with secure random IV
+- `dekEncrypt()` — Spring Bean, AES-GCM with master key
+- Double-layer encryption: PAN → DEK → Master Key (envelope encryption)
+
+### Validation
+- `@ExpiryYear` — custom annotation on TokenizeRequest
+- `ExpiryYearValidator` — validates expiryMonth + expiryYear not before current YearMonth
+- PAN validated with `@LuhnCheck` (Luhn algorithm) + regex (13-19 digits)
+- CVV validated with regex (3-4 digits)
 
 ### Pending
-- Card tokenization logic
-- Token encryption / secure storage
-- All controllers, services, repositories
+- Token revocation endpoint
+- Card listing per customer/merchant
 
 ---
 
@@ -268,3 +310,25 @@
   - NetBankingAdapter — full initiate() with processor routing, capture() stub
   - UPIPaymentAdapter — full initiate() with processor routing, capture() stub
   - All adapters have try-catch with PaymentResult.Failure fallback
+
+### 26 June 2026
+- Vault Module fully implemented
+  - VaultServiceImpl — tokenize() + charge()
+  - Double-layer envelope encryption: PAN → DEK (AES-GCM) → Master Key (AES-GCM)
+  - Per-card DEK generation (AES-256, 32 bytes)
+  - Card brand detection from PAN prefix (VISA/MASTERCARD/AMEX/RUPAY)
+  - Token generation with `tok_` prefix
+  - charge() — DEK decryption → PAN decryption → processor routing → PAN zero-fill in finally
+  - VaultEncryption config — master key from application.yaml
+  - VaultController — `POST /tokenize`
+  - VaultCardRepository + CardTokenRepository (findByTokenAndRevokedAtIsNull)
+- Custom validation added
+  - @ExpiryYear annotation + ExpiryYearValidator (YearMonth comparison)
+  - @LuhnCheck on PAN field
+  - CVV + PAN regex validation
+- CardPaymentAdapter fully wired — token → VaultService.charge() → PaymentResult mapping
+- Bank Callback Simulator structure added
+  - BankCallbackSimulator — @Scheduled polling AUTHORIZING payments
+  - SimulatorConfig — @ConfigurationProperties with per-method success rates
+  - ChaosMode enum added
+  - application.yaml updated with simulator + vault config

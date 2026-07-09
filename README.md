@@ -13,6 +13,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - Maven
 - Lombok
 - MapStruct (DTO Mapping)
+- Spring Security Crypto (AES-GCM Encryption)
 - Git & GitHub
 
 ---
@@ -44,11 +45,15 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - PaymentServiceImpl — Full payment initiation + capture flow
 - Payment State Machine — 14 transitions covering full payment lifecycle
 - Payment Transition Log — Full audit trail of every state change
-- Gateway Layer — Adapter Pattern (NetBanking & UPI fully wired, Card stub)
-- Processor Layer — Strategy Pattern (NetBanking & UPI simulated, Card stub)
+- Gateway Layer — Adapter Pattern (NetBanking & UPI fully wired, Card wired via Vault)
+- Processor Layer — Strategy Pattern (NetBanking & UPI simulated, Card via VaultService)
 - PaymentGatewayRouter & PaymentProcessorRouter
 - Sealed Interface — PaymentResult & PaymentProcessorResponse (exhaustive switch)
 - InvalidStateTransitionException — illegal state+event guard
+- Vault Module — Card tokenization with envelope encryption (PAN → DEK → Master Key, AES-GCM)
+- Card Brand Detection — VISA / MASTERCARD / AMEX / RUPAY
+- Custom Validation — @ExpiryYear annotation + @LuhnCheck on PAN
+- Bank Callback Simulator — @Scheduled poller with per-method chaos config
 
 ---
 
@@ -56,7 +61,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 
 - Authentication Module (JWT — Service wired, filter pending)
 - Order Creation Business Logic (OrderServiceImpl)
-- Card Payment Processor & Adapter (logic pending)
+- Bank Callback Simulator — simulateCallback() logic pending
 - Refund API
 
 ---
@@ -76,6 +81,12 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 ---
 
 ## 🌐 API Endpoints (Working)
+
+### Vault — `/tokenize`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/tokenize` | Tokenize a card (returns `tok_` token) |
 
 ### Auth — `/v1/auth`
 
@@ -128,8 +139,10 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - DLQ Events
 
 ### Vault Module
-- Card Vault
-- Card Token Management (Entity only, no API layer yet)
+- Card Tokenization (`tok_` prefix tokens)
+- AES-GCM Envelope Encryption (PAN → DEK → Master Key)
+- Card Brand Detection
+- Token-based charge routing to PaymentProcessorRouter
 
 ---
 
