@@ -4,13 +4,15 @@ import com.rajnish.razorpay.common.utils.RandomizerUtil;
 import com.rajnish.razorpay.payment.processor.PaymentProcessor;
 import com.rajnish.razorpay.payment.processor.dto.PaymentProcessorRequest;
 import com.rajnish.razorpay.payment.processor.dto.PaymentProcessorResponse;
+import org.springframework.stereotype.Component;
 
+@Component
 public class UPIPaymentProcessor implements PaymentProcessor {
     @Override
     public PaymentProcessorResponse charge(PaymentProcessorRequest request) {
         final String VPA_CODE_FAIL="fail@axis";
         String bankCode=request.methodDetails() != null ?
-                request.methodDetails().get("VPA").toString() : null;
+                request.methodDetails().get("vpa").toString() : null;
 
         //simulation
         if(VPA_CODE_FAIL.equals(bankCode)){

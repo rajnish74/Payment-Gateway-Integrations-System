@@ -22,7 +22,7 @@ server:
 
 
 vault:
-  master-key: hjwg238usvuyfe6ikvjsdhypd9836f32oidehv283762036djvhg02ekiouyfertof3297ffryfhdsve7
+  master-key: WTtGqMrItO8DwVD48GUO5zfwU2yc7f891/MdhSWBs7c=
 
 payment:
   simulator:
@@ -44,4 +44,6 @@ payment:
         max-delay-seconds: 10
         success-rate: 80
 
+jwt:
+  secret-key: dont-use-in-production-ekh32837389owhjeg3782rdshqjvg32975d37286763ry237652ryedgf6
 

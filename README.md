@@ -13,7 +13,8 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - Maven
 - Lombok
 - MapStruct (DTO Mapping)
-- Spring Security Crypto (AES-GCM Encryption)
+- Spring Security (JWT + BCrypt + AES-GCM Encryption)
+- JJWT (JSON Web Token)
 - Git & GitHub
 
 ---
@@ -36,13 +37,14 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - Repository Layer
 - Controller Layer
 - Service Layer Structure
-- Global Exception Handling
+- Global Exception Handling (+ MethodArgumentNotValidException → HTTP 400 field errors)
 - Merchant Registration API Structure
 - API Key Management Module (Full CRUD — Service complete)
 - Auth Controller & Service Structure
+- Login API — JWT token generation on authenticate
 - Order Controller Structure
 - Payment Controller — Initiate & Capture Payment APIs
-- PaymentServiceImpl — Full payment initiation + capture flow
+- PaymentServiceImpl — Full initiation + capture + resolveAuthorization flow
 - Payment State Machine — 14 transitions covering full payment lifecycle
 - Payment Transition Log — Full audit trail of every state change
 - Gateway Layer — Adapter Pattern (NetBanking & UPI fully wired, Card wired via Vault)
@@ -53,46 +55,47 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - Vault Module — Card tokenization with envelope encryption (PAN → DEK → Master Key, AES-GCM)
 - Card Brand Detection — VISA / MASTERCARD / AMEX / RUPAY
 - Custom Validation — @ExpiryYear annotation + @LuhnCheck on PAN
-- Bank Callback Simulator — @Scheduled poller with per-method chaos config
+- Bank Callback Simulator — fully implemented with ChaosMode (SUCCESS/FAILURE/TIMEOUT/NORMAL/SLOW)
+- JWT Authentication — JwtUtils, MerchantUserDetailsService, WebSecurityConfig (dual chain)
+- BCrypt password encoding
+- WebSecurityConfig — stateless, CSRF disabled, JWT + API Key route separation
 
 ---
 
 ## 🔄 In Progress
 
-- Authentication Module (JWT — Service wired, filter pending)
+- JWT Filter (intercept requests, extract + validate token, set SecurityContext)
 - Order Creation Business Logic (OrderServiceImpl)
-- Bank Callback Simulator — simulateCallback() logic pending
-- Refund API
+- Merchant Signup (save to DB, hash password)
+- API Key authentication middleware
 
 ---
 
 ## 🎯 Planned Features
 
-- JWT Authentication (filter & token validation)
-- Customer Management
-- Payment Processing (state machine)
 - Refund API
 - Settlement Engine
 - Webhook Event Handling
 - Dead Letter Queue (DLQ)
+- Kafka Integration (Event-Driven Processing)
+- Redis Caching & Idempotency Keys
+- Rate Limiting
 - Merchant Dashboard APIs
-- Payment Analytics
+- Docker Deployment
+- CI/CD Pipeline
+- Unit & Integration Testing
+- Monitoring & Logging
 
 ---
 
-## 🌐 API Endpoints (Working)
-
-### Vault — `/tokenize`
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/tokenize` | Tokenize a card (returns `tok_` token) |
+## 🌐 API Endpoints
 
 ### Auth — `/v1/auth`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/v1/auth/signup` | Merchant registration |
+| POST | `/v1/auth/login` | Login — returns JWT access token |
 
 ### API Key Management — `/v1/merchants/{merchantId}/api-keys`
 
@@ -116,20 +119,28 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 | POST | `/v1/payments` | Initiate a payment for an order |
 | POST | `/v1/payments/{paymentId}/capture` | Capture an authorized payment |
 
+### Vault — `/v1/vault`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/vault/tokenize` | Tokenize a card (returns `tok_` token) |
+
 ---
 
 ## 📂 Module Structure
 
 ### Merchant Module
 - Merchant Registration
-- API Key Management (CRUD complete)
+- Login (JWT)
+- API Key Management (CRUD + Rotation)
 - User Management
 - Customer Management
 
 ### Payment Module
 - Orders
-- Payments
-- Refunds
+- Payments (initiate, capture, resolveAuthorization)
+- Bank Callback Simulator (ChaosMode)
+- Refunds (planned)
 - Webhook Configuration
 
 ### Operations Module
@@ -141,7 +152,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 ### Vault Module
 - Card Tokenization (`tok_` prefix tokens)
 - AES-GCM Envelope Encryption (PAN → DEK → Master Key)
-- Card Brand Detection
+- Card Brand Detection (VISA / MASTERCARD / AMEX / RUPAY)
 - Token-based charge routing to PaymentProcessorRouter
 
 ---
@@ -163,11 +174,15 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 ```
 Client Request
       ↓
-Controller Layer  (REST endpoints, input validation)
+JWT / API Key Filter  (authentication middleware)
       ↓
-Service Layer     (Business logic, transaction management)
+Controller Layer      (REST endpoints, input validation)
       ↓
-Repository Layer  (Spring Data JPA)
+Service Layer         (Business logic, state machine, transaction management)
+      ↓
+Gateway / Processor   (Adapter + Strategy pattern per payment method)
+      ↓
+Repository Layer      (Spring Data JPA)
       ↓
 PostgreSQL Database
 ```
@@ -177,10 +192,9 @@ PostgreSQL Database
 ## 🔮 Future Enhancements
 
 - Razorpay-style Checkout Flow
-- API Key Rotation
-- Rate Limiting
 - Kafka Integration (Event-Driven Processing)
-- Redis Caching
+- Redis Caching & Idempotency Keys
+- Rate Limiting
 - Docker Deployment
 - CI/CD Pipeline
 - Unit & Integration Testing
@@ -195,8 +209,8 @@ This project is being built to gain hands-on experience with:
 - Payment Gateway Architecture
 - Spring Boot Backend Development
 - Database Design & Relationships
-- Secure API Development
-- Transaction Processing
+- Secure API Development (JWT + API Key)
+- Transaction Processing & State Machines
 - Event-Driven Systems
 - Scalable Software Architecture
 

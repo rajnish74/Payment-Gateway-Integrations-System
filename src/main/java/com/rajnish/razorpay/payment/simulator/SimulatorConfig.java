@@ -1,7 +1,9 @@
 package com.rajnish.razorpay.payment.simulator;
 
 import com.rajnish.razorpay.common.enums.ChaosMode;
+import com.rajnish.razorpay.common.enums.PaymentMethod;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -11,12 +13,20 @@ import java.util.Map;
 
 @Configuration
 @ConfigurationProperties(prefix = "payment.simulator")
+@RequiredArgsConstructor
+@Getter
+@Setter
 public class SimulatorConfig {
 
     private Integer pollIntervalMs=2000;
     private ChaosMode chaosMode=ChaosMode.NORMAL;
 
-    private Map<String, MethodSimulatorConfig> methods=new HashMap<>();
+    private final Map<String, MethodSimulatorConfig> methods=new HashMap<>();
+
+
+    public SimulatorConfig.MethodSimulatorConfig configfor(PaymentMethod method) {
+        return methods.getOrDefault(method.name(),new MethodSimulatorConfig());
+    }
 
     @Getter
     @Setter

@@ -139,15 +139,21 @@
 - `UPIPaymentAdapter` — full initiate() with processor routing + capture() stub
 - `CardPaymentAdapter` ✅ fully wired — extracts token from methodDetails → calls VaultService.charge() → maps ProcessorResponse to PaymentResult
 
-### Bank Callback Simulator (structure ready)
-- `BankCallbackSimulator` — `@Scheduled` job, polls AUTHORIZING payments older than 1s
-- `SimulatorConfig` — `@ConfigurationProperties(prefix="payment.simulator")`
-  - pollIntervalMs, chaosMode (ChaosMode enum)
-  - Per-method config: minDelaySeconds, maxDelaySeconds, successRate
-- `ChaosMode` enum added to common
-- Configured via `application.yaml` (card: 90% success, UPI: 95%, NetBanking: 80%)
-- `simulateCallback()` logic pending
-- All adapters handle exceptions and return `PaymentResult.Failure` on error
+### Bank Callback Simulator ✅ Complete
+- `BankCallbackSimulator` — `@Scheduled` polling AUTHORIZING payments older than 1s
+- `simulateCallback()` — fully implemented
+  - Reads per-method config (minDelay, maxDelay, successRate)
+  - Calculates `dueAt` from payment createdAt + method delay (SLOW mode doubles delay)
+  - ChaosMode switch — SUCCESS/FAILURE/TIMEOUT/NORMAL/SLOW all handled
+  - `shouldApproved()` — deterministic bucket via `paymentId.hashCode() % 100`
+- `resolve()` — calls `paymentService.resolveAuthorization()` with approve/reject
+- `SimulatorConfig` — `configfor(PaymentMethod)` lookup with default fallback
+- `resolveAuthorization()` in PaymentServiceImpl ✅ fully implemented
+  - Validates AUTHORIZING status before processing
+  - approve=true → AUTHORIZE_SUCCESS → auto-capture → CAPTURE_REQUEST → CAPTURE_SUCCESS/FAILURE
+  - approve=false → AUTHORIZE_FAILURE, stores errorCode + errorDescription
+  - OrderRecord status updated to PAID on successful capture
+  - Persists both payments + orderRecord
 
 ### Capture Flow ✅
 - `PaymentController` — `POST /v1/payments/{paymentId}/capture`
@@ -225,9 +231,19 @@
 
 ---
 
-## Phase 6: Cross-Cutting Concerns ⏳ Pending
+## Phase 6: Security & Cross-Cutting Concerns 🔄 In Progress
 
-- JWT Authentication (filter, token generation, validation)
+### JWT Authentication ✅ Implemented
+- JwtUtils — HMAC-SHA, generateAccessToken(email, merchantId, role) + verifyAccessToken()
+- MerchantUserDetailsService — UserDetailsService loading AppUser by email
+- WebSecurityConfig — dual chain (JWT routes + API Key routes), stateless, CSRF disabled
+- AuthenticationManager — DaoAuthenticationProvider + BCryptPasswordEncoder
+- LoginRequest + LoginResponse records
+- AuthServiceImpl.login() — authenticate → load user → generate JWT → return token
+- POST /v1/auth/login added to AuthController
+- GlobalExceptionHandler — MethodArgumentNotValidException → HTTP 400 VALIDATION_FAILED with field errors
+
+### Pending
 - API Key authentication middleware
 - Rate limiting
 - Request/response logging
@@ -238,10 +254,10 @@
 
 ## Upcoming Tasks (Priority Order)
 
-1. Order Creation API full implementation (OrderServiceImpl business logic)
-2. Complete Merchant Signup (AuthServiceImpl — save to DB)
-3. Implement JWT token generation and filter
-4. Card/UPI/NetBanking actual processor logic
+1. JWT Filter — intercept requests, extract + validate token, set SecurityContext
+2. Order Creation API full implementation (OrderServiceImpl business logic)
+3. Complete Merchant Signup (AuthServiceImpl — save to DB, hash password)
+4. API Key authentication middleware
 5. Refund API
 6. Settlement processing
 
@@ -311,7 +327,7 @@
   - UPIPaymentAdapter — full initiate() with processor routing, capture() stub
   - All adapters have try-catch with PaymentResult.Failure fallback
 
-### 26 June 2026
+### 3 July 2026
 - Vault Module fully implemented
   - VaultServiceImpl — tokenize() + charge()
   - Double-layer envelope encryption: PAN → DEK (AES-GCM) → Master Key (AES-GCM)
@@ -332,3 +348,25 @@
   - SimulatorConfig — @ConfigurationProperties with per-method success rates
   - ChaosMode enum added
   - application.yaml updated with simulator + vault config
+
+### 12 July 2026
+- BankCallbackSimulator fully implemented
+  - simulateCallback() — per-method delay calculation, ChaosMode switch (SUCCESS/FAILURE/TIMEOUT/NORMAL/SLOW)
+  - shouldApproved() — deterministic success/failure via paymentId.hashCode() % 100 < successRate
+  - dueAt() — delay = minDelay + hash-bucket offset; SLOW mode doubles delay
+  - resolve() — calls paymentService.resolveAuthorization(approve/reject)
+  - SimulatorConfig.configfor() — per-method lookup with MethodSimulatorConfig default fallback
+- PaymentServiceImpl.resolveAuthorization() implemented
+  - AUTHORIZING status guard (warns and skips if wrong state)
+  - approve=true → AUTHORIZE_SUCCESS → auto-capture (CAPTURE_REQUEST → CAPTURE_SUCCESS/FAILURE)
+  - approve=false → AUTHORIZE_FAILURE, stores errorCode + errorDescription
+  - OrderRecord.orderStatus = PAID on successful capture
+- Security module implemented
+  - JwtUtils — HMAC-SHA generateAccessToken() + verifyAccessToken() (merchant_id + role claims, 100min expiry)
+  - MerchantUserDetailsService — UserDetailsService loading AppUser by email
+  - WebSecurityConfig — dual security chain (JWT routes + API Key routes), stateless, CSRF disabled
+  - AuthenticationManager — DaoAuthenticationProvider + BCryptPasswordEncoder
+  - LoginRequest record + LoginResponse record
+  - AuthServiceImpl.login() — AuthenticationManager.authenticate() → load user → generate JWT
+  - POST /v1/auth/login endpoint added to AuthController
+  - GlobalExceptionHandler — MethodArgumentNotValidException handler (HTTP 400, VALIDATION_FAILED, field errors list)

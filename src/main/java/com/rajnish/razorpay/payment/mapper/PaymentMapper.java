@@ -13,9 +13,9 @@ import java.util.List;
 public interface PaymentMapper {
 
    @Mapping(target="orderId",source="order.id")
+   @Mapping(target = "errorDescriptions", source = "errorMessage")
    //@Mapping(target="merchant_id",source="merchantId")
     PaymentResponse toResponse(Payments payments);
 
-    @Mapping(target="orderId",source="order.id")
    List<PaymentResponse> toResponseList(List<Payments> paymentsList);
 }
