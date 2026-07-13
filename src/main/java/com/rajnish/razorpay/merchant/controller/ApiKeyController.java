@@ -3,6 +3,7 @@ package com.rajnish.razorpay.merchant.controller;
 import com.rajnish.razorpay.merchant.dto.request.CreateApiKeyRequest;
 import com.rajnish.razorpay.merchant.dto.response.ApiKeyCreateResponse;
 import com.rajnish.razorpay.merchant.dto.response.ApiKeyResponse;
+import com.rajnish.razorpay.merchant.security.MerchantContext;
 import com.rajnish.razorpay.merchant.services.ApiKeyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,34 +15,35 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("v1/merchants/{merchantId}/api-keys")
+@RequestMapping("v1/merchants/api-keys")
 @RequiredArgsConstructor
 public class ApiKeyController {
 
     private final ApiKeyService apiKeyService;
+    private final MerchantContext  merchantContext;
 
     @PostMapping
-    public ResponseEntity<ApiKeyCreateResponse> createApiKey(@PathVariable UUID merchantId, @Valid
+    public ResponseEntity<ApiKeyCreateResponse> createApiKey( @Valid
                                                              @RequestBody CreateApiKeyRequest request) {
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(apiKeyService.createApiKey(merchantId, request));
+                .body(apiKeyService.createApiKey(merchantContext.getMerchantId(), request));
     }
 
     @GetMapping
-    public ResponseEntity<List<ApiKeyResponse>> getListMerchantApiKeys(@PathVariable UUID merchantId) {
-        return ResponseEntity.ok(apiKeyService.getListMerchantApiKeys(merchantId));
+    public ResponseEntity<List<ApiKeyResponse>> getListMerchantApiKeys() {
+        return ResponseEntity.ok(apiKeyService.getListMerchantApiKeys(merchantContext.getMerchantId()));
     }
 
     @DeleteMapping("/{keyId}")
-    public ResponseEntity<Void> deleteApiKey(@PathVariable UUID merchantId, @PathVariable UUID keyId) {
-        apiKeyService.deleteApiKey(merchantId,keyId);
+    public ResponseEntity<Void> deleteApiKey(@PathVariable UUID keyId) {
+        apiKeyService.deleteApiKey(merchantContext.getMerchantId(),keyId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{keyId}/rotate")
-    public ResponseEntity<ApiKeyCreateResponse> rotateApiKey(@PathVariable UUID merchantId, @PathVariable UUID keyId) {
-        return ResponseEntity.ok(apiKeyService.rotateApiKey(merchantId,keyId));
+    public ResponseEntity<ApiKeyCreateResponse> rotateApiKey(@PathVariable UUID keyId) {
+        return ResponseEntity.ok(apiKeyService.rotateApiKey(merchantContext.getMerchantId(),keyId));
     }
 
 }

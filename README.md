@@ -57,17 +57,21 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - Custom Validation — @ExpiryYear annotation + @LuhnCheck on PAN
 - Bank Callback Simulator — fully implemented with ChaosMode (SUCCESS/FAILURE/TIMEOUT/NORMAL/SLOW)
 - JWT Authentication — JwtUtils, MerchantUserDetailsService, WebSecurityConfig (dual chain)
-- BCrypt password encoding
-- WebSecurityConfig — stateless, CSRF disabled, JWT + API Key route separation
+- JwtAuthenticationFilter — Bearer token extraction, SecurityContext + MerchantContext population
+- ApiKeyAuthenticationFilter — Basic Auth (Base64 keyId:secret), BCrypt match, 24hr grace period fallback
+- MerchantContext — @RequestScope scoped proxy, merchantId + keyId available per request
+- ApiKeyServiceImpl — full CRUD with BCrypt hashing, soft delete, key rotation with grace period
+- AuditorAwareImpl — JPA audit trail reads from MerchantContext (keyId → merchantId → SYSTEM)
+- All controllers updated — hardcoded UUID removed, MerchantContext.getMerchantId() used throughout
 
 ---
 
 ## 🔄 In Progress
 
-- JWT Filter (intercept requests, extract + validate token, set SecurityContext)
 - Order Creation Business Logic (OrderServiceImpl)
 - Merchant Signup (save to DB, hash password)
-- API Key authentication middleware
+- Refund API
+- Settlement Engine
 
 ---
 
@@ -97,14 +101,16 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 | POST | `/v1/auth/signup` | Merchant registration |
 | POST | `/v1/auth/login` | Login — returns JWT access token |
 
-### API Key Management — `/v1/merchants/{merchantId}/api-keys`
+### API Key Management — `/v1/merchants/api-keys`
+
+> Requires JWT Bearer token. MerchantId resolved from token via MerchantContext.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/v1/merchants/{merchantId}/api-keys` | Create a new API key |
-| GET | `/v1/merchants/{merchantId}/api-keys` | List all API keys for merchant |
-| DELETE | `/v1/merchants/{merchantId}/api-keys/{keyId}` | Delete an API key |
-| POST | `/v1/merchants/{merchantId}/api-keys/{keyId}/rotate` | Rotate an API key |
+| POST | `/v1/merchants/api-keys` | Create a new API key |
+| GET | `/v1/merchants/api-keys` | List all API keys for merchant |
+| DELETE | `/v1/merchants/api-keys/{keyId}` | Delete an API key (soft disable) |
+| POST | `/v1/merchants/api-keys/{keyId}/rotate` | Rotate an API key (24hr grace period) |
 
 ### Orders — `/v1/orders`
 
@@ -130,11 +136,12 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 ## 📂 Module Structure
 
 ### Merchant Module
-- Merchant Registration
-- Login (JWT)
-- API Key Management (CRUD + Rotation)
-- User Management
-- Customer Management
+- Merchant Registration + Login (JWT)
+- API Key Management — CRUD, soft delete, rotation with 24hr grace period
+- JWT Authentication Filter + API Key Authentication Filter
+- MerchantContext — request-scoped merchant identity
+- AuditorAware — JPA audit trail per request
+- User Management, Customer Management
 
 ### Payment Module
 - Orders
@@ -174,7 +181,9 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 ```
 Client Request
       ↓
-JWT / API Key Filter  (authentication middleware)
+JWT Filter  (/v1/auth/**, /v1/merchants/**)   |   API Key Filter  (/v1/orders/**, /v1/payments/**, /v1/vault/**)
+      ↓
+MerchantContext (request-scoped: merchantId, keyId)
       ↓
 Controller Layer      (REST endpoints, input validation)
       ↓
@@ -182,7 +191,7 @@ Service Layer         (Business logic, state machine, transaction management)
       ↓
 Gateway / Processor   (Adapter + Strategy pattern per payment method)
       ↓
-Repository Layer      (Spring Data JPA)
+Repository Layer      (Spring Data JPA + AuditorAware)
       ↓
 PostgreSQL Database
 ```

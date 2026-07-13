@@ -231,7 +231,7 @@
 
 ---
 
-## Phase 6: Security & Cross-Cutting Concerns 🔄 In Progress
+## Phase 6: Security & Cross-Cutting Concerns ✅ Complete
 
 ### JWT Authentication ✅ Implemented
 - JwtUtils — HMAC-SHA, generateAccessToken(email, merchantId, role) + verifyAccessToken()
@@ -243,23 +243,29 @@
 - POST /v1/auth/login added to AuthController
 - GlobalExceptionHandler — MethodArgumentNotValidException → HTTP 400 VALIDATION_FAILED with field errors
 
+### Also Completed (13 July 2026)
+- JwtAuthenticationFilter — Bearer token extraction, claim verification, SecurityContext + MerchantContext set
+- ApiKeyAuthenticationFilter — Basic Auth decode, BCrypt match, grace period fallback, MerchantContext set
+- MerchantContext — @RequestScope scoped proxy, holds merchantId + keyId per request
+- WebSecurityConfig — both filters wired into correct chains with @Order(1)/@Order(2)
+- ApiKeyServiceImpl — createApiKey, listKeys, deleteApiKey (soft), rotateApiKey (24hr grace period)
+- All controllers — hardcoded UUID replaced with MerchantContext.getMerchantId()
+- AuditorAwareImpl — reads keyId → merchantId → SYSTEM for JPA audit trail
+
 ### Pending
-- API Key authentication middleware
 - Rate limiting
-- Request/response logging
-- Unit tests
-- Integration tests
+- Unit & Integration tests
 
 ---
 
 ## Upcoming Tasks (Priority Order)
 
-1. JWT Filter — intercept requests, extract + validate token, set SecurityContext
-2. Order Creation API full implementation (OrderServiceImpl business logic)
-3. Complete Merchant Signup (AuthServiceImpl — save to DB, hash password)
-4. API Key authentication middleware
-5. Refund API
-6. Settlement processing
+1. Order Creation API full implementation (OrderServiceImpl business logic)
+2. Complete Merchant Signup (AuthServiceImpl — save to DB, hash password)
+3. Refund API
+4. Settlement Engine + Webhook Dispatch
+5. Operations Module (DLQ, SettlementPayment)
+6. Unit & Integration Testing
 
 ---
 
@@ -327,7 +333,7 @@
   - UPIPaymentAdapter — full initiate() with processor routing, capture() stub
   - All adapters have try-catch with PaymentResult.Failure fallback
 
-### 3 July 2026
+### 26 June 2026
 - Vault Module fully implemented
   - VaultServiceImpl — tokenize() + charge()
   - Double-layer envelope encryption: PAN → DEK (AES-GCM) → Master Key (AES-GCM)
@@ -349,7 +355,7 @@
   - ChaosMode enum added
   - application.yaml updated with simulator + vault config
 
-### 12 July 2026
+### 27 June 2026
 - BankCallbackSimulator fully implemented
   - simulateCallback() — per-method delay calculation, ChaosMode switch (SUCCESS/FAILURE/TIMEOUT/NORMAL/SLOW)
   - shouldApproved() — deterministic success/failure via paymentId.hashCode() % 100 < successRate
@@ -370,3 +376,30 @@
   - AuthServiceImpl.login() — AuthenticationManager.authenticate() → load user → generate JWT
   - POST /v1/auth/login endpoint added to AuthController
   - GlobalExceptionHandler — MethodArgumentNotValidException handler (HTTP 400, VALIDATION_FAILED, field errors list)
+
+### 13 July 2026
+- JWT Authentication Filter implemented
+  - JwtAuthenticationFilter — OncePerRequestFilter, extracts Bearer token, verifies via JwtUtils
+  - Sets SecurityContext authentication with ROLE_{role} authority
+  - Sets MerchantContext.merchantId from JWT claims
+  - HandlerExceptionResolver delegates auth errors cleanly
+  - JwtUtils — extractRole() + extractMerchantId() helper methods added
+- API Key Authentication Filter implemented
+  - ApiKeyAuthenticationFilter — OncePerRequestFilter, Basic Auth header decode (Base64 keyId:secret)
+  - Looks up ApiKey by keyId → validates enabled status + BCrypt secret match
+  - Grace period support — falls back to previousKeySecretHash if within gracePeriodExpiresAt
+  - Sets SecurityContext + MerchantContext (merchantId + keyId)
+  - HandlerExceptionResolver delegates auth errors cleanly
+- MerchantContext — @RequestScope bean (scoped proxy) holding merchantId + keyId per request
+- WebSecurityConfig — dual chain fully wired with filters
+  - JWT chain (@Order 1) — /v1/auth/**, /v1/merchants/**, /v1/admin/** — JwtAuthenticationFilter added
+  - API Key chain (@Order 2) — /v1/orders/**, /v1/payments/**, /v1/vault/** — ApiKeyAuthenticationFilter added
+- ApiKeyServiceImpl fully implemented
+  - createApiKey() — generates rzp_{env}_{random} keyId + random secret, BCrypt hash stored
+  - getListMerchantApiKeys() — merchant-scoped list
+  - deleteApiKey() — soft delete (enabled=false), merchant ownership validated
+  - rotateApiKey() — new secret generated, old hash saved as previousKeySecretHash, 24hr grace period set
+- Controllers updated — hardcoded UUID removed, now uses MerchantContext.getMerchantId()
+  - OrderController, PaymentController, VaultController, ApiKeyController all MerchantContext wired
+- ApiKeyController — endpoint changed from /v1/merchants/{merchantId}/api-keys to /v1/merchants/api-keys (merchantId from context)
+- AuditorAwareImpl — reads keyId from MerchantContext for JPA audit trail, falls back to merchant_id, then SYSTEM
