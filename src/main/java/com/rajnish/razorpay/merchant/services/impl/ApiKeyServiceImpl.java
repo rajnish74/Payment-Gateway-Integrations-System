@@ -2,6 +2,7 @@ package com.rajnish.razorpay.merchant.services.impl;
 
 import com.rajnish.razorpay.common.exceptions.ResourceNotFoundException;
 import com.rajnish.razorpay.common.utils.RandomizerUtil;
+import com.rajnish.razorpay.merchant.cache.ApiKeyCache;
 import com.rajnish.razorpay.merchant.dto.request.CreateApiKeyRequest;
 import com.rajnish.razorpay.merchant.dto.response.ApiKeyCreateResponse;
 import com.rajnish.razorpay.merchant.dto.response.ApiKeyResponse;
@@ -31,6 +32,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     private final ApiKeyRepository apiKeyRepository;
     private final ApiKeyMapper apiKeyMapper;
     private BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder();
+    private final ApiKeyCache apiKeyCache;
 
     @Override
     @Transactional
@@ -71,6 +73,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                 .orElseThrow(()->new ResourceNotFoundException("apiKey",keyId));
 
        apiKey.setEnabled(false);
+       apiKeyCache.evict(apiKey.getKeyId());
 
     }
 
@@ -91,6 +94,8 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         apiKey.setGracePeriodExpiresAt(LocalDateTime.now().plusHours(24));
 
         apiKey=apiKeyRepository.save(apiKey);
+
+        apiKeyCache.evict(apiKey.getKeyId());
 
         return new ApiKeyCreateResponse(
                 apiKey.getId(),

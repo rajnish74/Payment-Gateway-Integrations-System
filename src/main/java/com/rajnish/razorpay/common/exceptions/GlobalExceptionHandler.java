@@ -1,5 +1,6 @@
 package com.rajnish.razorpay.common.exceptions;
 
+import com.rajnish.razorpay.common.ratelimit.RateLimitResult;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,5 +42,16 @@ public class GlobalExceptionHandler {
         );
 
 
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimitException(RateLimitException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("X-RateLimit-Remaining", "0")
+                .header("Retry-After", String.valueOf(e.getRetryAfterSeconds()))
+                .header("X-RateLimit-Reset", String.valueOf(
+                        Instant.now().plusSeconds(e.getRetryAfterSeconds()).toEpochMilli()
+                ))
+                .body(ErrorResponse.of("RATE_LIMIT_EXCEEDED", e.getMessage()));
     }
 }

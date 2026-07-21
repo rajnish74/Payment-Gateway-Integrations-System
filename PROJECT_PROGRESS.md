@@ -253,8 +253,31 @@
 - AuditorAwareImpl — reads keyId → merchantId → SYSTEM for JPA audit trail
 
 ### Pending
-- Rate limiting
 - Unit & Integration tests
+
+---
+
+## Phase 7: Redis Caching & Rate Limiting ✅ Complete
+
+### Redis Integration
+- RedisConfig — StringRedisTemplate bean
+- Spring Data Redis configured via application.yaml (env var support)
+
+### API Key Cache (Redis-backed)
+- ApiKeyCache interface + RedisApiKeyCache implementation
+- ApiKeyCacheEntry record with isInGracePeriod() helper
+- Cache-aside pattern in ApiKeyAuthenticationFilter — DB only on cache miss
+- TTL: 5 minutes, key prefix: "api_key:"
+- Graceful degradation — cache errors fall back to DB transparently
+
+### Fixed Window Rate Limiter
+- RateLimiter interface + FixedWindowRateLimiter (@ConditionalOnProperty)
+- Redis INCR + EXPIRE atomic pattern for window counting
+- RateLimitResult record — allowed/denied factory methods
+- RateLimitException with retryAfterSeconds
+- Per API key rate limiting ("apiKey:{keyId}")
+- X-RateLimit-Limit + X-RateLimit-Remaining response headers
+- Configurable via application.yaml per use-case
 
 ---
 
@@ -403,3 +426,34 @@
   - OrderController, PaymentController, VaultController, ApiKeyController all MerchantContext wired
 - ApiKeyController — endpoint changed from /v1/merchants/{merchantId}/api-keys to /v1/merchants/api-keys (merchantId from context)
 - AuditorAwareImpl — reads keyId from MerchantContext for JPA audit trail, falls back to merchant_id, then SYSTEM
+
+### 21 July 2026
+- Redis integration added
+  - RedisConfig — StringRedisTemplate bean wired with RedisConnectionFactory
+  - application.yaml — Redis host/port/password via env vars (REDIS_HOST, REDIS_PORT, REDIS_PASSWORD)
+  - Spring Data Redis dependency added
+- API Key Cache (Redis-backed) implemented
+  - ApiKeyCache interface — get(), put(), evict()
+  - ApiKeyCacheEntry record — keyId, keySecretHash, previousKeySecretHash, gracePeriodExpiresAt, merchantId, environment, enabled
+    - isInGracePeriod() helper method on record
+  - RedisApiKeyCache — StringRedisTemplate + Jackson ObjectMapper, TTL: 5 minutes, prefix: "api_key:"
+    - get() — deserializes JSON from Redis, returns Optional.empty() on miss or error
+    - put() — serializes to JSON, sets with 5min TTL
+    - evict() — deletes key from Redis
+  - ApiKeyAuthenticationFilter updated — cache-first lookup (apiKeyCache.get()), falls back to DB + cache on miss (loadAndCache())
+    - Direct DB call (findByKeyId) replaced with cache-aside pattern
+- Rate Limiting implemented
+  - RateLimiter interface — check(key, maxRequests, windowSeconds) → RateLimitResult
+  - RateLimitResult record — isAllowed, remaining, retryAfterSeconds + static allowed()/denied() factory methods
+  - FixedWindowRateLimiter — @ConditionalOnProperty(app.rate-limit.method=fixed)
+    - Redis INCR + EXPIRE pattern for atomic fixed window counting
+    - First request sets TTL, subsequent requests increment
+    - Returns remaining count on allow, retryAfter TTL on deny
+  - RateLimitException — RuntimeException with retryAfterSeconds + remaining fields
+  - ApiKeyAuthenticationFilter — rate limit check after API key validation
+    - Key: "apiKey:{keyId}" — per-key rate limiting
+    - X-RateLimit-Limit header added to response
+    - X-RateLimit-Remaining header added to response
+    - RateLimitException thrown on exceed → handled by HandlerExceptionResolver
+  - application.yaml — app.rate-limit.method=fixed, api-key.requests-per-minute: 2 (testing value)
+  - @Value("${app.rate-limit.use-case.api-key.requests-per-minute:60}") — configurable per use case

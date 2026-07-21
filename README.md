@@ -15,6 +15,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - MapStruct (DTO Mapping)
 - Spring Security (JWT + BCrypt + AES-GCM Encryption)
 - JJWT (JSON Web Token)
+- Redis (Caching + Rate Limiting)
 - Git & GitHub
 
 ---
@@ -63,6 +64,10 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - ApiKeyServiceImpl — full CRUD with BCrypt hashing, soft delete, key rotation with grace period
 - AuditorAwareImpl — JPA audit trail reads from MerchantContext (keyId → merchantId → SYSTEM)
 - All controllers updated — hardcoded UUID removed, MerchantContext.getMerchantId() used throughout
+- Redis API Key Cache — cache-aside pattern, 5min TTL, graceful DB fallback on cache miss
+- Fixed Window Rate Limiter — Redis INCR+EXPIRE, per-key limits, X-RateLimit-* response headers
+- RateLimitException + GlobalExceptionHandler — HTTP 429 with retryAfterSeconds
+- application.yaml — configurable per use-case rate limits via @Value
 
 ---
 
@@ -72,6 +77,8 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - Merchant Signup (save to DB, hash password)
 - Refund API
 - Settlement Engine
+- Sliding Window Rate Limiter (alternative to Fixed Window)
+- HTTP 429 handler in GlobalExceptionHandler (RateLimitException → Retry-After header)
 
 ---
 
@@ -141,6 +148,8 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - JWT Authentication Filter + API Key Authentication Filter
 - MerchantContext — request-scoped merchant identity
 - AuditorAware — JPA audit trail per request
+- Redis API Key Cache — cache-aside, 5min TTL, evict on rotate/delete
+- Fixed Window Rate Limiter — per API key, configurable RPM, X-RateLimit-* headers
 - User Management, Customer Management
 
 ### Payment Module
@@ -181,7 +190,10 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 ```
 Client Request
       ↓
-JWT Filter  (/v1/auth/**, /v1/merchants/**)   |   API Key Filter  (/v1/orders/**, /v1/payments/**, /v1/vault/**)
+JWT Filter (/v1/auth/**, /v1/merchants/**)  |  API Key Filter (/v1/orders/**, /v1/payments/**, /v1/vault/**)
+      ↓                                                    ↓
+      |                               Redis Cache (ApiKey lookup, 5min TTL)
+      |                               Fixed Window Rate Limiter (Redis INCR+EXPIRE)
       ↓
 MerchantContext (request-scoped: merchantId, keyId)
       ↓
@@ -193,7 +205,7 @@ Gateway / Processor   (Adapter + Strategy pattern per payment method)
       ↓
 Repository Layer      (Spring Data JPA + AuditorAware)
       ↓
-PostgreSQL Database
+PostgreSQL Database   |   Redis (Cache + Rate Limit counters)
 ```
 
 ---
