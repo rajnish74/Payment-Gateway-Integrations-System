@@ -279,6 +279,40 @@
 - X-RateLimit-Limit + X-RateLimit-Remaining response headers
 - Configurable via application.yaml per use-case
 
+### Sliding Window Rate Limiter ✅ (13 July 2026 addition)
+- `SlidingWindowRateLimiter` — Redis ZSet, ZREMRANGEBYSCORE + ZCARD + ZADD per request
+  - Prunes expired members each request, no burst at window boundary
+  - Computes retryAfter from oldest member score
+  - @ConditionalOnProperty(`app.rate-limit.method=sliding`)
+- `SlidingWindowLuaLimiter` — atomic Lua script version (sliding-lua)
+  - Single round-trip: prune + count + add + expire in one atomic Lua execution
+  - Returns `[allowed, remaining, oldestScore]` — retryAfter computed from oldestScore
+  - Fail-open on Redis DataAccessException
+  - @ConditionalOnProperty(`app.rate-limit.method=sliding-lua`)
+- `TokenBucketRateLimiter` — continuous token refill via Lua script (bucket)
+  - Capacity = maxRequests, refill rate = maxRequests / windowSeconds tokens/sec
+  - State (tokens, ts) stored in Redis Hash — HMGET + HMSET + EXPIRE atomic in Lua
+  - No burst at window edge — tokens trickle back continuously
+  - Fail-open on Redis DataAccessException
+  - @ConditionalOnProperty(`app.rate-limit.method=bucket`)
+- All three strategies pluggable via single config property — zero code change to switch
+
+### Idempotency Layer ✅ (13 July 2026 addition)
+- `IdempotencyStore` interface — `setIfAbsent()`, `store()`, `get()`, `remove()`
+- `RedisIdempotencyStore` — Redis-backed implementation
+  - `setIfAbsent()` — atomic Redis SET NX with IN_PROGRESS sentinel + 30s TTL
+  - `store()` — persists `{status}|{body}` string with 24hr TTL on success
+  - `remove()` — clears placeholder on error/empty response so client can retry cleanly
+  - Fail-open on DataAccessException
+- `IdempotencyFilter` — OncePerRequestFilter, guards POST/PUT/PATCH
+  - Scoped key: `{merchantId}:{X-Idempotency-Key}` (or raw key if no merchant context)
+  - First request — claims key, wraps response in ContentCachingResponseWrapper
+  - Duplicate request (IN_PROGRESS) → 409 IdempotencyConflictException
+  - Duplicate request (COMPLETED) → replays stored status + body exactly
+  - Error responses (4xx/5xx) → placeholder removed, client can safely retry
+- `IdempotencyConflictException` — custom exception for 409 conflict
+- `WebSecurityConfig` updated — IdempotencyFilter added after JWT + API Key filters in both chains
+
 ---
 
 ## Upcoming Tasks (Priority Order)
@@ -288,7 +322,8 @@
 3. Refund API
 4. Settlement Engine + Webhook Dispatch
 5. Operations Module (DLQ, SettlementPayment)
-6. Unit & Integration Testing
+6. RateLimitFilter — wire RateLimiter into HTTP filter chain with response headers
+7. Unit & Integration Testing
 
 ---
 
@@ -457,3 +492,17 @@
     - RateLimitException thrown on exceed → handled by HandlerExceptionResolver
   - application.yaml — app.rate-limit.method=fixed, api-key.requests-per-minute: 2 (testing value)
   - @Value("${app.rate-limit.use-case.api-key.requests-per-minute:60}") — configurable per use case
+
+### 21 July 2026
+- Three rate limiter strategies implemented (all pluggable via app.rate-limit.method config):
+  - SlidingWindowRateLimiter — Redis ZSet, non-atomic (no burst at window boundary)
+  - SlidingWindowLuaLimiter — atomic Lua version, single round-trip to Redis
+  - TokenBucketRateLimiter — continuous token refill via Lua, no window-edge burst at all
+  - All three fail-open on Redis DataAccessException
+- Idempotency layer fully implemented:
+  - IdempotencyStore interface + RedisIdempotencyStore (SET NX sentinel pattern)
+  - IdempotencyFilter — POST/PUT/PATCH guarded, ContentCachingResponseWrapper for response replay
+  - Scoped key: merchantId + X-Idempotency-Key header
+  - IN_PROGRESS → 409 conflict, COMPLETED → exact replay (status + body), ERROR → placeholder removed
+  - IdempotencyConflictException added to common exceptions
+  - WebSecurityConfig updated — IdempotencyFilter wired after auth filters in both JWT + API Key chains

@@ -64,6 +64,16 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 - ApiKeyServiceImpl — full CRUD with BCrypt hashing, soft delete, key rotation with grace period
 - AuditorAwareImpl — JPA audit trail reads from MerchantContext (keyId → merchantId → SYSTEM)
 - All controllers updated — hardcoded UUID removed, MerchantContext.getMerchantId() used throughout
+- Rate Limiting — 3 pluggable strategies via `app.rate-limit.method` config:
+    - `SlidingWindowRateLimiter` — Redis ZSet, non-atomic sliding window
+    - `SlidingWindowLuaLimiter` — atomic Lua version, single Redis round-trip
+    - `TokenBucketRateLimiter` — continuous token refill via Lua, no window-edge burst
+    - All fail-open on Redis unavailability
+- Idempotency Layer — `X-Idempotency-Key` header support on POST/PUT/PATCH
+    - Redis SET NX sentinel pattern (IN_PROGRESS → 409, COMPLETED → replay, ERROR → retry-safe)
+    - ContentCachingResponseWrapper for exact response replay
+    - Scoped key: `{merchantId}:{idempotencyKey}`
+    - IdempotencyFilter wired into both JWT and API Key security chains
 - Redis API Key Cache — cache-aside pattern, 5min TTL, graceful DB fallback on cache miss
 - Fixed Window Rate Limiter — Redis INCR+EXPIRE, per-key limits, X-RateLimit-* response headers
 - RateLimitException + GlobalExceptionHandler — HTTP 429 with retryAfterSeconds
@@ -75,6 +85,7 @@ A Spring Boot-based Payment Gateway Integration System inspired by Razorpay arch
 
 - Order Creation Business Logic (OrderServiceImpl)
 - Merchant Signup (save to DB, hash password)
+- RateLimitFilter — wire into HTTP filter chain with X-RateLimit-* response headers
 - Refund API
 - Settlement Engine
 - Sliding Window Rate Limiter (alternative to Fixed Window)
